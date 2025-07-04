@@ -1,0 +1,134 @@
+package sheshiii;
+import javax.swing.*;
+import java.awt.*;
+import java.io.*;
+import java.net.*;
+public class ChatClient {
+	        private JFrame frame;
+		    private JTextArea chatArea;
+		    private JTextField inputField;
+		    private PrintWriter out;
+		    private Socket socket;
+		    private String username;
+		    public ChatClient() {
+		        initializeGUI();
+		    }
+		    private void initializeGUI() {
+		        frame = new JFrame("Chat Client");
+		        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		        frame.setSize(800, 600);
+		        frame.setLayout(new BorderLayout());
+		        JPanel connectionPanel = new JPanel(new FlowLayout());
+		        JTextField serverField = new JTextField("localhost", 15);
+		        JTextField portField = new JTextField("5555", 5);
+		        JButton connectButton = new JButton("Connect");
+		        connectionPanel.add(new JLabel("Server:"));
+		        connectionPanel.add(serverField);
+		        connectionPanel.add(new JLabel("Port:"));
+		        connectionPanel.add(portField);
+		        connectionPanel.add(connectButton);
+
+		        // Chat area
+		        chatArea = new JTextArea();
+		        chatArea.setEditable(false);
+		        chatArea.setFont(new Font("Monospaced", Font.PLAIN, 14));
+		        JScrollPane scrollPane = new JScrollPane(chatArea);
+
+		        // Input area
+		        JPanel inputPanel = new JPanel(new BorderLayout());
+		        inputField = new JTextField();
+		        inputField.setEnabled(false);
+		        JButton sendButton = new JButton("Send");
+		        inputPanel.add(inputField, BorderLayout.CENTER);
+		        inputPanel.add(sendButton, BorderLayout.EAST);
+		        JLabel statusBar = new JLabel("Not connected");
+		        statusBar.setBorder(BorderFactory.createEtchedBorder());
+		        frame.add(connectionPanel, BorderLayout.NORTH);
+		        frame.add(scrollPane, BorderLayout.CENTER);
+		        frame.add(inputPanel, BorderLayout.SOUTH);
+		        frame.add(statusBar, BorderLayout.PAGE_END);
+		        connectButton.addActionListener(e -> {
+		            if (connectButton.getText().equals("Connect")) {
+		                connectToServer(serverField.getText(), portField.getText(), statusBar);
+		                connectButton.setText("Disconnect");
+		            } else {
+		                disconnectFromServer(statusBar);
+		                connectButton.setText("Connect");
+		            }
+		        });
+		        inputField.addActionListener(e -> sendMessage());
+		        sendButton.addActionListener(e -> sendMessage());
+                frame.setVisible(true);
+		    }
+                private void connectToServer(String server, String portStr, JLabel statusBar) {
+		        try {
+		            username = JOptionPane.showInputDialog(frame, "Enter your username:", "Username", JOptionPane.PLAIN_MESSAGE);
+		            if (username == null || username.trim().isEmpty()) {
+		                statusBar.setText("Connection aborted - no username provided");
+		                return;
+		            }
+		            username = username.trim();
+		            int port = Integer.parseInt(portStr);
+		            socket = new Socket(server, port);
+		            out = new PrintWriter(socket.getOutputStream(), true);
+		            out.println(username);
+		            new Thread(() -> receiveMessages(statusBar)).start();
+		            inputField.setEnabled(true);
+		            statusBar.setText("Connected to " + server + ":" + port);
+		            appendToChat("[SYSTEM] Connecting to server...");
+		        } catch (NumberFormatException e) {
+		            statusBar.setText("Invalid port number");
+		        } catch (IOException e) {
+		            statusBar.setText("Connection failed: " + e.getMessage());
+		        }
+		    }
+
+		    private void disconnectFromServer(JLabel statusBar) {
+		        try {
+		            if (socket != null && !socket.isClosed()) {
+		                out.println("/quit");
+		                socket.close();
+		            }
+		            inputField.setEnabled(false);
+		            statusBar.setText("Disconnected");
+		            appendToChat("[SYSTEM] Disconnected from server");
+		        } catch (IOException e) {
+		            statusBar.setText("Error disconnecting: " + e.getMessage());
+		        }
+		    }
+
+		    private void sendMessage() {
+		        String message = inputField.getText();
+		        if (!message.isEmpty()) {
+		            out.println(message);
+		            appendToChat("[" + username + "] " + message);
+		            inputField.setText("");
+		        }
+		    }
+
+		    private void receiveMessages(JLabel statusBar) {
+		        try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+		            String message;
+		            while ((message = in.readLine()) != null) {
+		                appendToChat(message);
+		            }
+		        } catch (IOException e) {
+		            SwingUtilities.invokeLater(() -> {
+		                statusBar.setText("Disconnected from server");
+		                inputField.setEnabled(false);
+		                appendToChat("[SYSTEM] Connection lost: " + e.getMessage());
+		            });
+		        }
+		    }
+
+		    private void appendToChat(final String message) {
+		        SwingUtilities.invokeLater(() -> {
+		            chatArea.append(message + "\n");
+		            chatArea.setCaretPosition(chatArea.getDocument().getLength());
+		        });
+		    }
+
+		    public static void main(String[] args) {
+		        SwingUtilities.invokeLater(ChatClient::new);
+		    }
+		}
