@@ -46,3 +46,6 @@ Multithreaded Architecture: Each client connection runs in its own thread, allow
 Graceful Disconnection: Proper handling of client disconnections with notification to other users.
 Cross-Platform Compatibility: Works across different operating systems due to Java's platform independence.
 Scalable Design: Architecture supports easy extension for additional features like private messaging or chat rooms.
+
+**OUTPUT**
+[Task-3(output)ChatClient.txt](https://github.com/user-attachments/files/21060060/Task-3.output.ChatClient.txt)
